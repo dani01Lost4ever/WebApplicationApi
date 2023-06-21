@@ -34,6 +34,7 @@ namespace WebApplicationApi.Controllers
                         Email = entity.PartitionKey,
                         DomandaID = entity.RowKey,
                         Nome = entity.Nome,
+                        Cognome= entity.Cognome,
                         Indirizzo = entity.Indirizzo,
                         CAP = entity.CAP,
                         Comune = entity.Comune,
@@ -48,7 +49,75 @@ namespace WebApplicationApi.Controllers
             items.Reverse();
             return items.Take(quantity);
         }
+
+        /// <summary>
+        /// The get method ask for the number of questions that the user wants to display and filters It based on Province
+        /// </summary>
+        /// <param name="quantity"></param>
+        /// <param name="province"></param>
+        /// <returns></returns>
+        [HttpGet]
+        [Route("ByProvince")]
+        public async Task<IEnumerable<User>> RetrieveQuestionsByProvince(
+            int quantity,
+            string province
+        )
+        {
+            string connectionString =
+                "DefaultEndpointsProtocol=https;AccountName=peopledata;"
+                + "AccountKey=VtpmJrw2Ps5WiCFiQNX7sDxYqH736dR5TpoBa45lYGIgAwtjLaoD273LRg21hCfHy1zb8PBuYWd6ACDbpcwIEA==;"
+                + "TableEndpoint=https://peopledata.table.cosmos.azure.com/;";
+            CloudStorageAccount cloudStorageAccount = CloudStorageAccount.Parse(connectionString);
+            CloudTableClient cloudTableClient = cloudStorageAccount.CreateCloudTableClient();
+            string tableName = "People";
+            CloudTable cloudTable = cloudTableClient.GetTableReference(tableName);
+            // in order to verify If It exists otherwise It is going to create a new one
+            await cloudTable.CreateIfNotExistsAsync();
+
+            // Here I filter based on Province
+            TableQuery<User> tableQuery = new TableQuery<User>()
+                .Where(
+                    TableQuery.GenerateFilterCondition(
+                        "Provincia",
+                        QueryComparisons.Equal,
+                        province
+                    )
+                )
+                .Take(quantity);
+            // We set the continuation token to null to verify It
+            TableContinuationToken token = null;
+
+            List<User> userList = new();
+
+            do
+            {
+                TableQuerySegment<User> segment = await cloudTable.ExecuteQuerySegmentedAsync(
+                    tableQuery,
+                    token
+                );
+                foreach (User entity in segment)
+                {
+                    User user = new User()
+                    {
+                        Email = entity.PartitionKey,
+                        DomandaID = entity.RowKey,
+                        Nome = entity.Nome,
+                        Indirizzo = entity.Indirizzo,
+                        CAP = entity.CAP,
+                        Comune = entity.Comune,
+                        Provincia = entity.Provincia,
+                        DataPresentazioneDomanda = entity.Timestamp,
+                        StatoDellaDomanda = entity.StatoDellaDomanda
+                    };
+                    userList.Add(user);
+                }
+                token = segment.ContinuationToken;
+            } while (token != null);
+            userList.Reverse();
+            return userList.Take(quantity);
+        }
     }
+
     public class User : TableEntity
     {
         public string DomandaID { get; set; }
