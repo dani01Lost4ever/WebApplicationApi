@@ -23,7 +23,7 @@ namespace WebApplicationApi
             }
 
             app.UseAuthorization();
-
+            app.UseCors();
 
             app.MapControllers();
 
