@@ -7,5 +7,6 @@ namespace WebApplicationApi.Controllers
     [ApiController]
     public class PeopleController : ControllerBase
     {
+            
     }
 }
