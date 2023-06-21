@@ -56,7 +56,7 @@ namespace WebApplicationApi.Controllers
         /// <param name="quantity"></param>
         /// <param name="province"></param>
         /// <returns></returns>
-        [HttpGet]
+        [HttpPost]
         [Route("ByProvince")]
         public async Task<IEnumerable<User>> RetrieveQuestionsByProvince(
             int quantity,
@@ -102,6 +102,7 @@ namespace WebApplicationApi.Controllers
                         Email = entity.PartitionKey,
                         DomandaID = entity.RowKey,
                         Nome = entity.Nome,
+                        Cognome = entity.Cognome,
                         Indirizzo = entity.Indirizzo,
                         CAP = entity.CAP,
                         Comune = entity.Comune,
@@ -116,7 +117,62 @@ namespace WebApplicationApi.Controllers
             userList.Reverse();
             return userList.Take(quantity);
         }
+
+        [HttpPost]
+        [Route("GetQuestionsTimeOffsetAndState")]
+        public async Task<IEnumerable<User>> LastQuestions(DateTimeOffset startDate, DateTimeOffset endDate, int quantity, string statoDellaDomanda)
+        {
+            string connectionString = "DefaultEndpointsProtocol=https;AccountName=peopledata;AccountKey=VtpmJrw2Ps5WiCFiQNX7sDxYqH736dR5TpoBa45lYGIgAwtjLaoD273LRg21hCfHy1zb8PBuYWd6ACDbpcwIEA==;TableEndpoint=https://peopledata.table.cosmos.azure.com/";
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+            CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
+            string tableName = "People";
+            CloudTable table = tableClient.GetTableReference(tableName);
+            await table.CreateIfNotExistsAsync();
+
+            TableQuery<User> query = new TableQuery<User>()
+                .Where(
+                    TableQuery.CombineFilters(
+                        TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.GreaterThanOrEqual, startDate),
+                        TableOperators.And,
+                        TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.LessThanOrEqual, endDate)
+                    )
+                )
+                .Where(TableQuery.GenerateFilterCondition("StatoDellaDomanda", QueryComparisons.Equal, statoDellaDomanda))
+                .Take(quantity);
+
+            TableContinuationToken continuationToken = null;
+            List<User> items = new List<User>();
+
+            do
+            {
+                TableQuerySegment<User> segment = await table.ExecuteQuerySegmentedAsync(query, continuationToken);
+                foreach (User entity in segment)
+                {
+                    User user = new User()
+                    {
+                        Email = entity.PartitionKey,
+                        DomandaID = entity.RowKey,
+                        Nome = entity.Nome,
+                        Cognome = entity.Cognome,
+                        Indirizzo = entity.Indirizzo,
+                        CAP = entity.CAP,
+                        Comune = entity.Comune,
+                        Provincia = entity.Provincia,
+                        DataPresentazioneDomanda = entity.Timestamp,
+                        StatoDellaDomanda = entity.StatoDellaDomanda
+                    };
+                    items.Add(user);
+                }
+                continuationToken = segment.ContinuationToken;
+            } while (continuationToken != null);
+
+            items.Reverse();
+            return items;
+        }
+
+
     }
+
 
     public class User : TableEntity
     {
