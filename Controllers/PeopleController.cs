@@ -174,7 +174,7 @@ namespace WebApplicationApi.Controllers
 
         [HttpPost]
         [Route("GetQuestionsTimeOffset")]
-        public async Task<IEnumerable<User>> LastQuestionsOffset(DateTimeOffset startDate, DateTimeOffset endDate)
+        public async Task<IEnumerable<User>> LastQuestionsOffset(DateTimeOffset startDate, DateTimeOffset endDate, int quantity)
         {
             string connectionString = "DefaultEndpointsProtocol=https;AccountName=peopledata;AccountKey=VtpmJrw2Ps5WiCFiQNX7sDxYqH736dR5TpoBa45lYGIgAwtjLaoD273LRg21hCfHy1zb8PBuYWd6ACDbpcwIEA==;TableEndpoint=https://peopledata.table.cosmos.azure.com/";
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
@@ -184,13 +184,14 @@ namespace WebApplicationApi.Controllers
             await table.CreateIfNotExistsAsync();
 
             TableQuery<User> query = new TableQuery<User>()
-                .Where(
+               .Where(
                     TableQuery.CombineFilters(
                         TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.GreaterThanOrEqual, startDate),
                         TableOperators.And,
                         TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.LessThanOrEqual, endDate)
                     )
-                );
+                )
+                .Take(quantity);
 
             TableContinuationToken continuationToken = null;
             List<User> items = new List<User>();
