@@ -58,4 +58,4 @@
 - Method: GET
 - Description: Retrieve the number of questions asked per province.
 
-- Example: `POST https://questionuser.azurewebsites.net/api/People/userprovince`
+- Example: `GET https://questionuser.azurewebsites.net/api/People/userprovince`
