@@ -1,5 +1,24 @@
 # Web Application API Documentation
 
+This project is part of a bigger project including 2 other teams the Front-end and Mobile App teams.
+
+## Technology Stack
+
+The project was built:
+
+- C# for the API
+- Azure Cosmos DB as the Database.
+
+Our objective in creating this API was to provide access to the data to other groups in the projects.
+
+<div style="display: flex; gap: 1em;">
+<img src="./icons/Microsoft-Azure.svg" alt="Microsoft Azure" style="width: 35px">
+
+<img src="./icons/Azure-Cosmos-DB.svg" alt="Azure CosmosDB icon" style="width: 35px">
+
+<img src="./icons/Csharp.svg" alt="Csharp icon" style="width: 35px">
+</div>
+
 ## Base URL
 
 `https://questionuser.azurewebsites.net/api/`
@@ -59,3 +78,17 @@
 - Description: Retrieve the number of questions asked per province.
 
 - Example: `GET https://questionuser.azurewebsites.net/api/People/userprovince`
+
+### Team
+
+This project was made by:
+
+- [dani01Lost4ever](https://github.com/dani01Lost4ever)
+
+- [CavaliereDavid](https://github.com/CavaliereDavid)
+
+- [catgrasso](https://github.com/catgrasso)
+
+- [Rikymeggio1234](https://github.com/Rikymeggio1234)
+
+- [godwin-17](https://github.com/godwin-17)
