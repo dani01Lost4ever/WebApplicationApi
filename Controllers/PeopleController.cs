@@ -39,7 +39,7 @@ namespace WebApplicationApi.Controllers
                         CAP = entity.CAP,
                         Comune = entity.Comune,
                         Provincia = entity.Provincia,
-                        DataPresentazioneDomanda = entity.Timestamp,
+                        DataPresentazioneDomanda = entity.DataPresentazioneDomanda,
                         StatoDellaDomanda = entity.StatoDellaDomanda
                     };
                     items.Add(user);
@@ -50,12 +50,6 @@ namespace WebApplicationApi.Controllers
             return items.Take(quantity);
         }
 
-        /// <summary>
-        /// The get method ask for the number of questions that the user wants to display and filters It based on Province
-        /// </summary>
-        /// <param name="quantity"></param>
-        /// <param name="province"></param>
-        /// <returns></returns>
         [HttpPost]
         [Route("ByProvince")]
         public async Task<IEnumerable<User>> RetrieveQuestionsByProvince(
@@ -107,7 +101,7 @@ namespace WebApplicationApi.Controllers
                         CAP = entity.CAP,
                         Comune = entity.Comune,
                         Provincia = entity.Provincia,
-                        DataPresentazioneDomanda = entity.Timestamp,
+                        DataPresentazioneDomanda = entity.DataPresentazioneDomanda,
                         StatoDellaDomanda = entity.StatoDellaDomanda
                     };
                     userList.Add(user);
@@ -120,7 +114,7 @@ namespace WebApplicationApi.Controllers
 
         [HttpPost]
         [Route("GetQuestionsTimeOffsetAndState")]
-        public async Task<IEnumerable<User>> LastQuestions(DateTimeOffset startDate, DateTimeOffset endDate, int quantity, string statoDellaDomanda)
+        public async Task<IEnumerable<User>> LastQuestions(DateTime startDate, DateTime endDate, int quantity, string statoDellaDomanda)
         {
             string connectionString = "DefaultEndpointsProtocol=https;AccountName=peopledata;AccountKey=VtpmJrw2Ps5WiCFiQNX7sDxYqH736dR5TpoBa45lYGIgAwtjLaoD273LRg21hCfHy1zb8PBuYWd6ACDbpcwIEA==;TableEndpoint=https://peopledata.table.cosmos.azure.com/";
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
@@ -129,19 +123,19 @@ namespace WebApplicationApi.Controllers
             CloudTable table = tableClient.GetTableReference(tableName);
             await table.CreateIfNotExistsAsync();
 
-            TableQuery<User> query = new TableQuery<User>()
-                .Where(
-                    TableQuery.CombineFilters(
-                        TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.GreaterThanOrEqual, startDate),
-                        TableOperators.And,
-                        TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.LessThanOrEqual, endDate)
-                    )
-                )
-                .Where(TableQuery.GenerateFilterCondition("StatoDellaDomanda", QueryComparisons.Equal, statoDellaDomanda))
-                .Take(quantity);
+
+            DateTimeOffset startDateO = new DateTimeOffset(startDate);
+            DateTimeOffset endDateO = new DateTimeOffset(endDate);
+            string startDateString = TableQuery.GenerateFilterConditionForLong("DataPresentazioneDomanda", QueryComparisons.GreaterThanOrEqual, startDateO.UtcDateTime.Ticks);
+            string endDateString = TableQuery.GenerateFilterConditionForLong("DataPresentazioneDomanda", QueryComparisons.LessThanOrEqual, endDateO.UtcDateTime.Ticks);
+            string finalFilter = TableQuery.CombineFilters(startDateString, TableOperators.And, endDateString);
+            string state = TableQuery.GenerateFilterCondition("StatoDellaDomanda", QueryComparisons.Equal, statoDellaDomanda);
+            TableQuery<User> query = new TableQuery<User>().Where(finalFilter).Where(state);
+
 
             TableContinuationToken continuationToken = null;
             List<User> items = new List<User>();
+            int retrievedRecords = 0;
 
             do
             {
@@ -158,13 +152,15 @@ namespace WebApplicationApi.Controllers
                         CAP = entity.CAP,
                         Comune = entity.Comune,
                         Provincia = entity.Provincia,
-                        DataPresentazioneDomanda = entity.Timestamp,
+                        DataPresentazioneDomanda = entity.DataPresentazioneDomanda,
                         StatoDellaDomanda = entity.StatoDellaDomanda
                     };
                     items.Add(user);
+                    retrievedRecords++;
+                    if (retrievedRecords >= quantity) break;
                 }
                 continuationToken = segment.ContinuationToken;
-            } while (continuationToken != null);
+            } while (continuationToken != null && retrievedRecords < quantity);
 
             items.Reverse();
             return items;
@@ -174,8 +170,9 @@ namespace WebApplicationApi.Controllers
 
         [HttpPost]
         [Route("GetQuestionsTimeOffset")]
-        public async Task<IEnumerable<User>> LastQuestionsOffset(DateTimeOffset startDate, DateTimeOffset endDate, int quantity)
+        public async Task<IEnumerable<User>> LastQuestionsOffset(DateTime startDate, DateTime endDate, int quantity)
         {
+
             string connectionString = "DefaultEndpointsProtocol=https;AccountName=peopledata;AccountKey=VtpmJrw2Ps5WiCFiQNX7sDxYqH736dR5TpoBa45lYGIgAwtjLaoD273LRg21hCfHy1zb8PBuYWd6ACDbpcwIEA==;TableEndpoint=https://peopledata.table.cosmos.azure.com/";
             CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
             CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
@@ -183,18 +180,17 @@ namespace WebApplicationApi.Controllers
             CloudTable table = tableClient.GetTableReference(tableName);
             await table.CreateIfNotExistsAsync();
 
-            TableQuery<User> query = new TableQuery<User>()
-               .Where(
-                    TableQuery.CombineFilters(
-                        TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.GreaterThanOrEqual, startDate),
-                        TableOperators.And,
-                        TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.LessThanOrEqual, endDate)
-                    )
-                )
-                .Take(quantity);
+
+            DateTimeOffset startDateO = new DateTimeOffset(startDate);
+            DateTimeOffset endDateO = new DateTimeOffset(endDate);
+            string startDateString = TableQuery.GenerateFilterConditionForLong("DataPresentazioneDomanda", QueryComparisons.GreaterThanOrEqual, startDateO.UtcDateTime.Ticks);
+            string endDateString = TableQuery.GenerateFilterConditionForLong("DataPresentazioneDomanda", QueryComparisons.LessThanOrEqual, endDateO.UtcDateTime.Ticks);
+            string finalFilter = TableQuery.CombineFilters(startDateString, TableOperators.And, endDateString);
+            TableQuery<User> query = new TableQuery<User>().Where(finalFilter);
 
             TableContinuationToken continuationToken = null;
             List<User> items = new List<User>();
+            int retrievedRecords = 0;
 
             do
             {
@@ -211,16 +207,19 @@ namespace WebApplicationApi.Controllers
                         CAP = entity.CAP,
                         Comune = entity.Comune,
                         Provincia = entity.Provincia,
-                        DataPresentazioneDomanda = entity.Timestamp,
+                        DataPresentazioneDomanda = entity.DataPresentazioneDomanda,
                         StatoDellaDomanda = entity.StatoDellaDomanda
                     };
                     items.Add(user);
+                    retrievedRecords++;
+                    if (retrievedRecords >= quantity) break;
                 }
                 continuationToken = segment.ContinuationToken;
-            } while (continuationToken != null);
+            } while (continuationToken != null && retrievedRecords < quantity);
 
             items.Reverse();
             return items;
+
         }
 
 
@@ -282,7 +281,7 @@ namespace WebApplicationApi.Controllers
         public string Comune { get; set; }
         public string Provincia { get; set; }
         public string Email { get; set; }
-        public DateTimeOffset DataPresentazioneDomanda { get; set; }
+        public DateTime DataPresentazioneDomanda { get; set; }
         public string StatoDellaDomanda { get; set; }
     }
 }
