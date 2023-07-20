@@ -171,8 +171,105 @@ namespace WebApplicationApi.Controllers
         }
 
 
-    }
 
+        [HttpPost]
+        [Route("GetQuestionsTimeOffset")]
+        public async Task<IEnumerable<User>> LastQuestionsOffset(DateTimeOffset startDate, DateTimeOffset endDate)
+        {
+            string connectionString = "DefaultEndpointsProtocol=https;AccountName=peopledata;AccountKey=VtpmJrw2Ps5WiCFiQNX7sDxYqH736dR5TpoBa45lYGIgAwtjLaoD273LRg21hCfHy1zb8PBuYWd6ACDbpcwIEA==;TableEndpoint=https://peopledata.table.cosmos.azure.com/";
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+            CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
+            string tableName = "People";
+            CloudTable table = tableClient.GetTableReference(tableName);
+            await table.CreateIfNotExistsAsync();
+
+            TableQuery<User> query = new TableQuery<User>()
+                .Where(
+                    TableQuery.CombineFilters(
+                        TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.GreaterThanOrEqual, startDate),
+                        TableOperators.And,
+                        TableQuery.GenerateFilterConditionForDate("Timestamp", QueryComparisons.LessThanOrEqual, endDate)
+                    )
+                );
+
+            TableContinuationToken continuationToken = null;
+            List<User> items = new List<User>();
+
+            do
+            {
+                TableQuerySegment<User> segment = await table.ExecuteQuerySegmentedAsync(query, continuationToken);
+                foreach (User entity in segment)
+                {
+                    User user = new User()
+                    {
+                        Email = entity.PartitionKey,
+                        DomandaID = entity.RowKey,
+                        Nome = entity.Nome,
+                        Cognome = entity.Cognome,
+                        Indirizzo = entity.Indirizzo,
+                        CAP = entity.CAP,
+                        Comune = entity.Comune,
+                        Provincia = entity.Provincia,
+                        DataPresentazioneDomanda = entity.Timestamp,
+                        StatoDellaDomanda = entity.StatoDellaDomanda
+                    };
+                    items.Add(user);
+                }
+                continuationToken = segment.ContinuationToken;
+            } while (continuationToken != null);
+
+            items.Reverse();
+            return items;
+        }
+
+
+        [Route("userprovince")]
+        [HttpGet]
+        public async Task<List<UserProvince>> UserProvinceAsync()
+        {
+            string connectionString = "DefaultEndpointsProtocol=https;AccountName=peopledata;AccountKey=VtpmJrw2Ps5WiCFiQNX7sDxYqH736dR5TpoBa45lYGIgAwtjLaoD273LRg21hCfHy1zb8PBuYWd6ACDbpcwIEA==;TableEndpoint=https://peopledata.table.cosmos.azure.com/";
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+            CloudTableClient tableClient = storageAccount.CreateCloudTableClient();
+            string tableName = "People";
+            CloudTable table = tableClient.GetTableReference(tableName);
+            await table.CreateIfNotExistsAsync();
+
+            TableQuery<User> query = new TableQuery<User>();
+            TableContinuationToken continuationToken = null;
+
+            List<UserProvince> userProvince = new List<UserProvince>();
+            List<UserProvince> data = new List<UserProvince>();
+            do
+            {
+                TableQuerySegment<User> segment = await table.ExecuteQuerySegmentedAsync(query, continuationToken);
+                List<User> list = new List<User>();
+                list = segment.OrderBy(o => o.Provincia).ToList();
+                foreach (var line in list.GroupBy(info => info.Provincia)
+                                        .Select(group => new {
+                                            Provincia = group.Key,
+                                            Count = group.Count()
+                                        })
+                                        .OrderBy(x => x.Provincia))
+                {
+                    UserProvince newUserProvince = new UserProvince()
+                    {
+                        provincia = line.Provincia,
+                        n_requests = line.Count
+                    };
+                    data.Add(newUserProvince);
+                }
+            } while (continuationToken != null);
+
+            return data;
+        }
+
+
+    }
+    public class UserProvince
+    {
+        public string provincia { get; set; }
+        public int n_requests { get; set; }
+    }
 
     public class User : TableEntity
     {
