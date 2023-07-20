@@ -11,7 +11,7 @@ The project was built:
 
 Our objective in creating this API was to provide access to the data to other groups in the projects.
 
-<div style="display: flex; gap: 1em;">
+<div style="display: flex; gap: 10px;">
 <img src="./icons/Microsoft-Azure.svg" alt="Microsoft Azure" style="width: 35px">
 
 <img src="./icons/Azure-Cosmos-DB.svg" alt="Azure CosmosDB icon" style="width: 35px">
